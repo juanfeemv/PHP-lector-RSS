@@ -1,27 +1,24 @@
 <?php
 
-// NOTA: Estas credenciales locales NO funcionan en Vercel. 
-// La Base de Datos debe ser externa (ej: PlanetScale, ClearDB, RDS).
-// Las definimos aquí para mantener la estructura, pero la conexión fallará por diseño.
-
 $Repit=false;
-$host="localhost";
-$user="root";
-$password="";
 
-// ----------------------------------------------------------------------
-// IMPORTANTE: Bloqueamos intencionalmente la conexión directa a localhost
-// para evitar el error "No such file or directory" en el entorno Vercel.
-// La variable $link se inicializa a FALSE para que index.php muestre
-// el mensaje de error de conexión y NO intente ejecutar consultas SQL.
-// ----------------------------------------------------------------------
+// OBTENER CREDENCIALES DE VARIABLES DE ENTORNO (la forma correcta en Vercel)
+$host = getenv('DB_HOST');
+$user = getenv('DB_USER');
+$password = getenv('DB_PASSWORD');
+$dbname = getenv('DB_NAME');
 
-// Inicializamos $link a false (conexión fallida)
-$link = false; 
+// Intentar la conexión. Si las variables no existen o el host es inaccesible, fallará.
+// Pasamos el nombre de la BD directamente en la conexión.
+$link = @mysqli_connect($host, $user, $password, $dbname);
 
-// Si alguna vez usas una BD EXTERNA y variables de entorno de Vercel (ej: $host=getenv('DB_HOST')),
-// el código de conexión debería ir aquí, y $link podría ser exitoso.
+if (!$link) {
+    // Si la conexión falla (lo esperado sin BD externa), forzamos $link a FALSE
+    // Esto es crucial para que los scripts RSSElPais/Mundo puedan verificarlo.
+    $link = false; 
+} else {
+    // Si la conexión tiene éxito (solo con BD externa configurada)
+    @$tildes = $link->query("SET NAMES 'utf8'");
+}
 
-// La función mysqli_connect_error() buscará errores en esta conexión "simuladamente fallida".
-// Como $link es false, if(mysqli_connect_error()) será TRUE en index.php, mostrando tu mensaje.
 ?>
