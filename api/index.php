@@ -46,8 +46,8 @@ and open the template in the editor.
         <?php
         
         
-        require_once "RSSElPais.php";
-        require_once "RSSElMundo.php";
+        require_once __DIR__ . "/../RSSElPais.php";
+        require_once __DIR__ . "/../RSSElMundo.php";
         
         function filtros($sql, $link){
                  $filtrar= mysqli_query($link, $sql);
@@ -69,8 +69,8 @@ and open the template in the editor.
  
         }
         
-        require_once "./conexionBBDD.php";
-        
+        require_once __DIR__ . "/../conexionBBDD.php";     
+           
         if(mysqli_connect_error()){
         printf("Conexión fallida");
         }else{
