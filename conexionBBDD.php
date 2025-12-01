@@ -7,29 +7,38 @@ $host = getenv('DB_HOST');
 $user = getenv('DB_USER');
 $password = getenv('DB_PASSWORD');
 $dbname = getenv('DB_NAME');
+$port = 4000; // Puerto estándar para TiDB Serverless
 
 // Inicializamos $link a false por defecto.
 $link = false; 
 
 // ----------------------------------------------------------------------
-// CORRECCIÓN CRÍTICA: Solo intentamos la conexión si DB_HOST está configurado
-// Si $host está vacío (Variables de Entorno no configuradas en Vercel),
-// omitimos la conexión para evitar el error "No such file or directory".
+// CORRECCIÓN CRÍTICA: Implementación de conexión SSL/TLS
 // ----------------------------------------------------------------------
 
 if (!empty($host)) {
-    // Si $host está configurado, intentamos la conexión externa.
-    // Usamos @ para suprimir errores de red/credenciales.
-    $link = @mysqli_connect($host, $user, $password, $dbname);
+    
+    // 1. Crear un nuevo objeto mysqli
+    $link = @mysqli_init();
 
-    if ($link) {
+    // 2. Establecer el modo SSL requerido (IMPORTANTE para TiDB/PlanetScale)
+    // Usamos NULL para el certificado CA, confiando en la negociación del driver.
+@mysqli_ssl_set($link, NULL, NULL, NULL, NULL, NULL);
+    // 3. Intentar la conexión real usando el puerto y el objeto.
+    // Usamos @ para suprimir errores de red/credenciales.
+    $connected = @mysqli_real_connect($link, $host, $user, $password, $dbname, $port);
+
+    if ($connected) {
         // Si la conexión tiene éxito, configuramos la codificación.
         @$tildes = $link->query("SET NAMES 'utf8'");
     } else {
-        // Si falló la conexión externa, pero el host estaba definido.
+        // Si falló la conexión externa.
         $link = false;
     }
+} else {
+    // Si no hay host configurado
+    $link = false;
 }
 
-// Si $link es false, el código en RSSElPais/Mundo lo detectará y omitirá las consultas SQL.
+// Si $link es false, el código en RSSElPais/Mundo y index.php lo detectará y omitirá las consultas SQL.
 ?>

@@ -40,30 +40,41 @@
         
         <?php
         
-        // RUTAS CORREGIDAS: Apuntan al directorio superior (la raíz)
         require_once __DIR__ . "/../RSSElPais.php";
         require_once __DIR__ . "/../RSSElMundo.php";
         
+        // ----------------------------------------------------------------------
+        // FUNCIÓN FILTROS CORREGIDA: Verifica que $link NO sea FALSE
+        // ----------------------------------------------------------------------
         function filtros($sql, $link){
-                 $filtrar= mysqli_query($link, $sql);
-                 while ($arrayFiltro= mysqli_fetch_array($filtrar)) {
+            // Si la conexión falló, sale de la función sin intentar la consulta
+            if ($link === false) {
+                return;
+            }
+            
+            $filtrar= mysqli_query($link, $sql); 
+            
+            if ($filtrar === false) {
+                return;
+            }
+            
+             while ($arrayFiltro= mysqli_fetch_array($filtrar)) {
 
-                               echo"<tr>";              
-                                    echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['titulo']."</th>";
-                                    echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['contenido']."</th>";
-                                    echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['descripcion']."</th>";                      
-                                    echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['categoria']."</th>";                       
-                                    echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['link']."</th>";                              
-                                    $fecha=date_create($arrayFiltro['fPubli']);
-                                    $fechaConversion=date_format($fecha,'d-M-Y');
-                                    echo "<th style='border: 1px #E4CCE8 solid;'>".$fechaConversion."</th>";
-                               echo"</tr>";  
+                           echo"<tr>";              
+                                echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['titulo']."</th>";
+                                echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['contenido']."</th>";
+                                echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['descripcion']."</th>";                      
+                                echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['categoria']."</th>";                       
+                                echo "<th style='border: 1px #E4CCE8 solid;'>".$arrayFiltro['link']."</th>";                              
+                                $fecha=date_create($arrayFiltro['fPubli']);
+                                $fechaConversion=date_format($fecha,'d-M-Y');
+                                echo "<th style='border: 1px #E4CCE8 solid;'>".$fechaConversion."</th>";
+                           echo"</tr>";  
 
-                    }
+                }
  
         }
         
-        // RUTA CORREGIDA: Apunta al directorio superior (la raíz)
         require_once __DIR__ . "/../conexionBBDD.php"; 
         
         if(mysqli_connect_error()){
@@ -143,8 +154,8 @@
                 
             }else{
                             
-                            $sql="SELECT * FROM elpais ORDER BY fPubli desc";
-                            filtros($sql,$link);
+                $sql="SELECT * FROM elpais ORDER BY fPubli desc";
+                filtros($sql,$link);
                             
             }
                   
