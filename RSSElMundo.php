@@ -4,78 +4,94 @@ require_once "conexionRSS.php";
 
 $sXML=download("https://e00-elmundo.uecdn.es/elmundo/rss/espana.xml");
 
-$oXML=new SimpleXMLElement($sXML);
+try {
+    $oXML=new SimpleXMLElement($sXML);
+} catch (Exception $e) {
+    $oXML = null;
+}
 
 require_once "conexionBBDD.php";
 
 // ----------------------------------------------------------------------
-// CORRECCIÓN CRÍTICA: Solo se intenta hacer consultas a la BD si $link es válido
+// VERIFICACIÓN PDO FINAL
 // ----------------------------------------------------------------------
-if ($link !== false) {
+if ($link instanceof PDO && $oXML !== null) {
 
-    if(mysqli_connect_error()){
-        printf("Conexión a el periódico El Mundo ha fallado");
-    }else{
+    $contador=0;
+    
+    $categoria=["Política","Deportes","Ciencia","España","Economía","Música","Cine","Europa","Justicia"];
+    $categoriaFiltro="";
 
-        $contador=0;
+    foreach ($oXML->channel->item as $item){ 
+
         
-        $categoria=["Política","Deportes","Ciencia","España","Economía","Música","Cine","Europa","Justicia"];
-        $categoriaFiltro="";
+        $media = $item->children("media", true);
+        $description = $media->description; 
+        
 
-        foreach ($oXML->channel->item as $item){ //es un for a la que le hemos dicho que extraer y donde almacenarlo
+        for ( $i=0 ;$i<count($item->category); $i++){ 
 
-            
-            $media = $item->children("media", true);
-            $description = $media->description; 
-            
+            for($j=0; $j<count($categoria); $j++){
 
-            for ( $i=0 ;$i<count($item->category); $i++){ 
-
-                for($j=0; $j<count($categoria); $j++){
-
-                            if($item->category[$i]==$categoria[$j]){
-                                $categoriaFiltro="[".$categoria[$j]."]".$categoriaFiltro;
-                            }
+                        if($item->category[$i]==$categoria[$j]){
+                            $categoriaFiltro="[".$categoria[$j]."]".$categoriaFiltro;
                         }
+                    }
 
-
-            }
-
-
-            $fPubli= strtotime($item->pubDate);
-            $new_fPubli= date('Y-m-d', $fPubli);
-
-            $media = $item->children("media", true);
-            $description = $media->description; 
-
-            $sql="SELECT link FROM elmundo";
-            $result= mysqli_query($link,$sql);
-            
-            while($sqlCompara=mysqli_fetch_array($result)){
-                        
-                        
-                if($sqlCompara['link']==$item->link){
-                        
-                    $Repit=true;
-                    $contador=$contador+1;
-                    $contadorTotal=$contador;
-                    break;
-                    } else {
-                    $Repit=false;
-                }
-                        
-                        
-            }
-                if($Repit==false && $categoriaFiltro<>""){
-                    
-                    $sql="INSERT INTO elmundo VALUES('','$item->title','$item->link','$description','$categoriaFiltro','$new_fPubli','$item->guid')";
-                    $result= mysqli_query($link, $sql);
-                    
-                    
-                } 
-                $categoriaFiltro="";
 
         }
+
+
+        $fPubli= strtotime($item->pubDate);
+        $new_fPubli= date('Y-m-d', $fPubli);
+
+        $media = $item->children("media", true);
+        $description = $media->description; 
+
+        
+        try {
+            // PDO: Consulta SELECT para verificar si el link existe
+            $sql="SELECT link FROM elmundo WHERE link = :link";
+            $stmt = $link->prepare($sql);
+            $stmt->execute([':link' => (string)$item->link]);
+            $sqlCompara = $stmt->fetch(PDO::FETCH_ASSOC); // Obtener resultado
+        } catch (PDOException $e) {
+            $sqlCompara = false;
+        }
+        
+        // La consulta encontró el link (ya existe)
+        if($sqlCompara !== false){
+            $Repit=true; 
+            $contador=$contador+1;
+        } else {
+            $Repit=false;
+        }
+
+        if($Repit==false && $categoriaFiltro<>""){
+            
+            try {
+                // PDO: INSERT con placeholders
+                $sql="INSERT INTO elmundo (titulo, link, descripcion, categoria, fPubli, contenido) VALUES(:titulo, :link, :descripcion, :categoria, :fPubli, :contenido)";
+                $stmt = $link->prepare($sql);
+                
+                $stmt->execute([
+                    ':titulo' => (string)$item->title,
+                    ':link' => (string)$item->link,
+                    ':descripcion' => (string)$description,
+                    ':categoria' => $categoriaFiltro,
+                    ':fPubli' => $new_fPubli,
+                    ':contenido' => (string)$item->guid
+                ]);
+            } catch (PDOException $e) {
+                 // print("Error INSERT: " . $e->getMessage()); // Debugging
+            }
+            
+        } 
+        $categoriaFiltro="";
+
     }
+
+} else if ($link === false) {
+    printf("Conexión a el periódico El Mundo ha fallado.");
 }
 ?>

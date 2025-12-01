@@ -2,79 +2,92 @@
 
 require_once "conexionRSS.php";
 
-$sXML=download("https://ep00.epimg.net/rss/elpais/portada.xml"); // Corregido a HTTPS
+$sXML=download("https://ep00.epimg.net/rss/elpais/portada.xml"); 
 
-// Importante: Si $sXML está vacío, SimpleXMLElement lanzará la excepción, 
-// pero se dejará que el script continúe y muestre el mensaje de error si es necesario.
-$oXML=new SimpleXMLElement($sXML); 
+try {
+    $oXML=new SimpleXMLElement($sXML); 
+} catch (Exception $e) {
+    $oXML = null;
+}
+
 
 require_once "conexionBBDD.php";
 
 // ----------------------------------------------------------------------
-// CORRECCIÓN CRÍTICA: Solo se intenta hacer consultas a la BD si $link es válido
+// VERIFICACIÓN PDO FINAL
 // ----------------------------------------------------------------------
-if ($link !== false) {
-
-    if(mysqli_connect_error()){
-        printf("Conexión a el periódico El País ha fallado");
-    }else{
+if ($link instanceof PDO && $oXML !== null) {
             
-        $contador=0;
-        $categoria=["Política","Deportes","Ciencia","España","Economía","Música","Cine","Europa","Justicia"];
-        $categoriaFiltro="";
+    $contador=0;
+    $categoria=["Política","Deportes","Ciencia","España","Economía","Música","Cine","Europa","Justicia"];
+    $categoriaFiltro="";
+    
+    foreach ($oXML->channel->item as $item){
         
-        foreach ($oXML->channel->item as $item){
+        for ($i=0 ;$i<count($item->category); $i++){ 
             
-            for ($i=0 ;$i<count($item->category); $i++){ 
+            for($j=0; $j<count($categoria); $j++){
                 
-                for($j=0; $j<count($categoria); $j++){
-                    
-                    if($item->category[$i]==$categoria[$j]){
-                        $categoriaFiltro="[".$categoria[$j]."]".$categoriaFiltro;
-                    }
-                } 
-                 
-            }
-
-                
-          
-            $fPubli= strtotime($item->pubDate);
-            $new_fPubli= date('Y-m-d', $fPubli);
-            
-
-            $content = $item->children("content", true);
-            $encoded = $content->encoded; 
-
-            
-            $sql="SELECT link FROM elpais";
-            $result= mysqli_query($link,$sql); 
-            
-            while($sqlCompara=mysqli_fetch_array($result)){
-                
-                
-                if($sqlCompara['link']==$item->link){
-                    
-                    $Repit=true; 
-                    $contador=$contador+1;
-                    $contadorTotal=$contador;
-                    break;
-                    }else {
-                    $Repit=false;
+                if($item->category[$i]==$categoria[$j]){
+                    $categoriaFiltro="[".$categoria[$j]."]".$categoriaFiltro;
                 }
-                
-                
-            }
-                if($Repit==false && $categoriaFiltro<>""){
-                    
-                    $sql="INSERT INTO elpais VALUES('','$item->title','$item->link','$item->description','$categoriaFiltro','$new_fPubli','$encoded')";
-                    $result= mysqli_query($link, $sql);
-                    
-                } 
-                
-                $categoriaFiltro="";
+            } 
+             
         }
-                
-                
+
+        $fPubli= strtotime($item->pubDate);
+        $new_fPubli= date('Y-m-d', $fPubli);
+        
+
+        $content = $item->children("content", true);
+        $encoded = $content->encoded; 
+
+        
+        try {
+            // PDO: Consulta SELECT para verificar si el link existe
+            $sql="SELECT link FROM elpais WHERE link = :link";
+            $stmt = $link->prepare($sql);
+            $stmt->execute([':link' => (string)$item->link]);
+            $sqlCompara = $stmt->fetch(PDO::FETCH_ASSOC); // Obtener resultado
+        } catch (PDOException $e) {
+            $sqlCompara = false; 
+        }
+        
+        // La consulta encontró el link (ya existe)
+        if($sqlCompara !== false){
+            $Repit=true; 
+            $contador=$contador+1;
+        } else {
+            $Repit=false;
+        }
+
+        if($Repit==false && $categoriaFiltro<>""){
+            
+            try {
+                // PDO: INSERT con placeholders (mejor práctica que concatenar)
+                $sql="INSERT INTO elpais (titulo, link, descripcion, categoria, fPubli, contenido) VALUES(:titulo, :link, :descripcion, :categoria, :fPubli, :contenido)";
+                $stmt = $link->prepare($sql);
+
+                $stmt->execute([
+                    ':titulo' => (string)$item->title,
+                    ':link' => (string)$item->link,
+                    ':descripcion' => (string)$item->description,
+                    ':categoria' => $categoriaFiltro,
+                    ':fPubli' => $new_fPubli,
+                    ':contenido' => (string)$encoded
+                ]);
+
+            } catch (PDOException $e) {
+                // print("Error INSERT: " . $e->getMessage()); // Debugging
+            }
+            
+        } 
+        
+        $categoriaFiltro="";
     }
+            
+            
+} else if ($link === false) {
+    printf("Conexión a el periódico El País ha fallado.");
 }
 ?>
