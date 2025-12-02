@@ -1,93 +1,95 @@
 <?php
 
+// Mostrar errores para depuración (puedes quitar esto en producción si prefieres)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once "conexionRSS.php";
 
-$sXML=download("https://ep00.epimg.net/rss/elpais/portada.xml"); 
+// Descargar el RSS
+$sXML = download("https://ep00.epimg.net/rss/elpais/portada.xml"); 
 
-try {
-    $oXML=new SimpleXMLElement($sXML); 
-} catch (Exception $e) {
-    $oXML = null;
+$oXML = null;
+if (!empty($sXML)) {
+    try {
+        $oXML = new SimpleXMLElement($sXML); 
+    } catch (Exception $e) {
+        // XML inválido
+    }
 }
-
 
 require_once "conexionBBDD.php";
 
-// ----------------------------------------------------------------------
-// VERIFICACIÓN PDO FINAL
-// ----------------------------------------------------------------------
+// Solo procedemos si hay conexión (PDO) y hay datos XML
 if ($link instanceof PDO && $oXML !== null) {
             
-    $contador=0;
     $categoria=["Política","Deportes","Ciencia","España","Economía","Música","Cine","Europa","Justicia"];
-    $categoriaFiltro="";
+    
+    // PREPARAR CONSULTAS (Optimización)
+    // Nota las comillas en \"fPubli\", obligatorias en Postgres si la columna se creó con mayúsculas
+    $sql_check = "SELECT link FROM elpais WHERE link = :link";
+    $stmt_check = $link->prepare($sql_check);
+
+    $sql_insert = "INSERT INTO elpais (titulo, link, descripcion, categoria, \"fPubli\", contenido) VALUES(:titulo, :link, :descripcion, :categoria, :fPubli, :contenido)";
+    $stmt_insert = $link->prepare($sql_insert);
     
     foreach ($oXML->channel->item as $item){
         
-        for ($i=0 ;$i<count($item->category); $i++){ 
-            
-            for($j=0; $j<count($categoria); $j++){
-                
-                if($item->category[$i]==$categoria[$j]){
-                    $categoriaFiltro="[".$categoria[$j]."]".$categoriaFiltro;
+        $Repit = false; 
+        $categoriaFiltro = "";
+        
+        // Lógica de categorías
+        for ($i=0; $i < count($item->category); $i++){ 
+            for($j=0; $j < count($categoria); $j++){
+                if($item->category[$i] == $categoria[$j]){
+                    $categoriaFiltro = "[".$categoria[$j]."]" . $categoriaFiltro;
                 }
             } 
-             
         }
 
-        $fPubli= strtotime($item->pubDate);
-        $new_fPubli= date('Y-m-d', $fPubli);
+        // Formateo de fecha y contenido
+        $fPubli = strtotime($item->pubDate);
+        $new_fPubli = date('Y-m-d', $fPubli);
         
-
+        // El País usa namespaces para el contenido, a veces falla si no se accede bien
         $content = $item->children("content", true);
-        $encoded = $content->encoded; 
+        $encoded = (string)$content->encoded; 
+        // Si encoded está vacío, usamos la descripción
+        if(empty($encoded)) {
+            $encoded = (string)$item->description;
+        }
 
-        
+        // 1. VERIFICAR DUPLICADOS
         try {
-            // PDO: Consulta SELECT para verificar si el link existe
-            $sql="SELECT link FROM elpais WHERE link = :link";
-            $stmt = $link->prepare($sql);
-            $stmt->execute([':link' => (string)$item->link]);
-            $sqlCompara = $stmt->fetch(PDO::FETCH_ASSOC); // Obtener resultado
+            $stmt_check->execute([':link' => (string)$item->link]);
+            // Si fetch devuelve algo, es que ya existe
+            if ($stmt_check->fetch()) {
+                $Repit = true;
+            }
         } catch (PDOException $e) {
-            $sqlCompara = false; 
-        }
-        
-        // La consulta encontró el link (ya existe)
-        if($sqlCompara !== false){
-            $Repit=true; 
-            $contador=$contador+1;
-        } else {
-            $Repit=false;
+            // Error en lectura (ignorar)
         }
 
-        if($Repit==false && $categoriaFiltro<>""){
-            
+        // 2. INSERTAR SI ES NUEVO
+        if ($Repit == false && $categoriaFiltro != "") {
             try {
-                // PDO: INSERT con placeholders (mejor práctica que concatenar)
-                $sql="INSERT INTO elpais (titulo, link, descripcion, categoria, fPubli, contenido) VALUES(:titulo, :link, :descripcion, :categoria, :fPubli, :contenido)";
-                $stmt = $link->prepare($sql);
-
-                $stmt->execute([
+                $stmt_insert->execute([
                     ':titulo' => (string)$item->title,
                     ':link' => (string)$item->link,
                     ':descripcion' => (string)$item->description,
                     ':categoria' => $categoriaFiltro,
                     ':fPubli' => $new_fPubli,
-                    ':contenido' => (string)$encoded
+                    ':contenido' => $encoded
                 ]);
-
             } catch (PDOException $e) {
-                // print("Error INSERT: " . $e->getMessage()); // Debugging
+                // Si falla el insert (ej: clave duplicada que se nos pasó), lo ignoramos para seguir
+                // echo "Error Insert: " . $e->getMessage(); 
             }
-            
         } 
-        
-        $categoriaFiltro="";
     }
             
-            
 } else if ($link === false) {
+    // Solo mostramos error si la conexión falló totalmente
     printf("Conexión a el periódico El País ha fallado.");
 }
 ?>
