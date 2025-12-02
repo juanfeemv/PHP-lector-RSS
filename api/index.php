@@ -17,7 +17,7 @@
             }
 
             form {
-                background-color: #f2f2f2;
+                background-color: #ffffffff;
                 padding: 15px;
                 border: 1px solid #ddd;
                 border-radius: 5px;
@@ -32,7 +32,7 @@
             input[type="submit"] {
                 cursor: pointer;
                 background-color: #ddd;
-                border: 1px solid #999;
+                border: 1px solid #777474ff;
             }
 
             table {
@@ -42,7 +42,7 @@
             }
 
             th, td {
-                border: 1px solid #ccc;
+                border: 1px solid #777474ff;
                 padding: 10px;
                 text-align: left;
                 font-size: 14px;
@@ -54,7 +54,7 @@
             }
 
             tr:nth-child(even) {
-                background-color: #f9f9f9;
+                background-color: #777474ff;
             }
 
             a {
@@ -62,14 +62,11 @@
                 text-decoration: none;
             }
             
-            a:hover {
-                text-decoration: underline;
-            }
         </style>
     </head>
     <body>
 
-        <h1>Lector de Noticias </h1>
+        <h1>Lector de Noticias</h1>
 
         <div style="display:none;">
             <?php
