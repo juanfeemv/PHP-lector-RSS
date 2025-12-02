@@ -42,7 +42,7 @@
             }
 
             th, td {
-                border: 1px solid #777474ff;
+                border: 1px solid #ccc9c9ff;
                 padding: 10px;
                 text-align: left;
                 font-size: 14px;
@@ -54,7 +54,7 @@
             }
 
             tr:nth-child(even) {
-                background-color: #777474ff;
+                background-color: #aeacacff;
             }
 
             a {
