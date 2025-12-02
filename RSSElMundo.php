@@ -1,6 +1,5 @@
 <?php
 
-// Mostrar errores para depuración
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -13,7 +12,6 @@ if (!empty($sXML)) {
     try {
         $oXML = new SimpleXMLElement($sXML);
     } catch (Exception $e) {
-        // XML inválido
     }
 }
 
@@ -23,11 +21,9 @@ if ($link instanceof PDO && $oXML !== null) {
 
     $categoria=["Política","Deportes","Ciencia","España","Economía","Música","Cine","Europa","Justicia"];
 
-    // PREPARAR CONSULTAS
     $sql_check = "SELECT link FROM elmundo WHERE link = :link";
     $stmt_check = $link->prepare($sql_check);
 
-    // Ojo a \"fPubli\"
     $sql_insert = "INSERT INTO elmundo (titulo, link, descripcion, categoria, \"fPubli\", contenido) VALUES(:titulo, :link, :descripcion, :categoria, :fPubli, :contenido)";
     $stmt_insert = $link->prepare($sql_insert);
 
@@ -36,7 +32,6 @@ if ($link instanceof PDO && $oXML !== null) {
         $Repit = false;
         $categoriaFiltro = "";
 
-        // El Mundo usa media:description a veces
         $media = $item->children("media", true);
         $description = (string)$item->description; 
         if(empty($description) && !empty($media->description)){
@@ -54,20 +49,16 @@ if ($link instanceof PDO && $oXML !== null) {
         $fPubli = strtotime($item->pubDate);
         $new_fPubli = date('Y-m-d', $fPubli);
 
-        // Contenido en El Mundo suele ser guid o link si no hay content:encoded
         $contenido = (string)$item->guid;
 
-        // 1. VERIFICAR DUPLICADOS
         try {
             $stmt_check->execute([':link' => (string)$item->link]);
             if ($stmt_check->fetch()) {
                 $Repit = true;
             }
         } catch (PDOException $e) {
-            // Error lectura
         }
 
-        // 2. INSERTAR
         if ($Repit == false && $categoriaFiltro != "") {
             try {
                 $stmt_insert->execute([
@@ -79,7 +70,6 @@ if ($link instanceof PDO && $oXML !== null) {
                     ':contenido' => $contenido
                 ]);
             } catch (PDOException $e) {
-                 // Error insert
             }
         } 
     }

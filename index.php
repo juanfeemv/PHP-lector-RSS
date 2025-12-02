@@ -91,17 +91,13 @@ and open the template in the editor.
                 $f=$_REQUEST['fecha'];
                 $palabra=$_REQUEST["buscar"];
                  
-                //FILTRO PERIODICO
 
                 if($cat=="" && $f=="" && $palabra==""){
-                 //$periodicos= str_replace(' ','',$_REQUEST['periodicos']);
                  $sql="SELECT * FROM ".$periodicosMin." ORDER BY fPubli desc";
                  
                  filtros($sql,$link);
                 
                 }
-
-                //FILTRO CATEGORIA
                 
                    if($cat!="" && $f=="" && $palabra==""){ 
                     $sql="SELECT * FROM ".$periodicosMin." WHERE categoria LIKE '%$cat%'";
@@ -111,8 +107,6 @@ and open the template in the editor.
                         
                     }
 
-                    //FILTRO FECHA
-
                        if($cat=="" && $f!="" && $palabra==""){
                            $sql="SELECT * FROM ".$periodicosMin." WHERE fPubli='$f'";
                           
@@ -120,15 +114,13 @@ and open the template in the editor.
                            
                         }
 
-                        //FILTRO CATEGORIA Y FECHA
-                            if($cat!="" && $f!="" && $palabra==""){ 
+                        if($cat!="" && $f!="" && $palabra==""){ 
                               $sql="SELECT * FROM ".$periodicosMin." WHERE categoria LIKE '%$cat%' and fPubli='$f'";
                              
                               filtros($sql,$link);
                               
                             }
 
-                            //FILTRO TODO
                             
                              if($cat!="" && $f!="" && $palabra!=""){ 
                               $sql="SELECT * FROM ".$periodicosMin." WHERE descripcion LIKE '%$palabra%' and categoria LIKE '%$cat%' and fPubli='$f'";
@@ -137,31 +129,24 @@ and open the template in the editor.
                             
                             }  
 
-                            //FILTRO CATEGORIA PALABRA
             
                             if($cat!="" && $f=="" && $palabra!=""){ 
-                                 //echo $periodicosMin;
                               $sql="SELECT * FROM ".$periodicosMin." WHERE descripcion LIKE '%$palabra%' and categoria LIKE '%$cat%'";
                              
                               filtros($sql,$link);
                             
                             } 
 
-                            //FILTRO FECHA Y PALABRA 
                             
                              if($cat=="" && $f!="" && $palabra!=""){ 
-                                 //echo $periodicosMin;
                               $sql="SELECT * FROM ".$periodicosMin." WHERE descripcion LIKE '%$palabra%' and fPubli='$f'";
                              
                               filtros($sql,$link);
                             
                             }  
 
-                            //FILTRO PALABRA
                             
                             if($palabra!="" && $cat=="" && $f=="" ){ 
-                               // echo $periodicosMin;
-                                // echo $palabra;
                               $sql="SELECT * FROM ".$periodicosMin." WHERE descripcion LIKE '%$palabra%' ";
                              
                               filtros($sql,$link);
