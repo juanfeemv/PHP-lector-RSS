@@ -69,7 +69,7 @@
     </head>
     <body>
 
-        <h1>Lector de Noticias Axio</h1>
+        <h1>Lector de Noticias </h1>
 
         <div style="display:none;">
             <?php
